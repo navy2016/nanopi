@@ -18,13 +18,15 @@ jobs:
         with:
           key: aarch64-unknown-linux-musl
 
-      - name: install cross gcc
+      - name: install cross toolchain
         run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: build release
         env:
           CC_aarch64_unknown_linux_musl: aarch64-linux-gnu-gcc
           AR_aarch64_unknown_linux_musl: aarch64-linux-gnu-ar
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
+          RUSTFLAGS: -C link-arg=-Wl,--fix-cortex-a53-843419
         run: cargo build --release --target aarch64-unknown-linux-musl
 
       - name: stage asset
