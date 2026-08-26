@@ -3,6 +3,9 @@ name: build-aarch64
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: build linux-aarch64-musl
@@ -26,7 +29,6 @@ jobs:
           CC_aarch64_unknown_linux_musl: aarch64-linux-gnu-gcc
           AR_aarch64_unknown_linux_musl: aarch64-linux-gnu-ar
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64-linux-gnu-gcc
-          RUSTFLAGS: -C link-arg=-Wl,--fix-cortex-a53-843419
         run: cargo build --release --target aarch64-unknown-linux-musl
 
       - name: stage asset
@@ -40,7 +42,16 @@ jobs:
           strip "dist/$OUT" || true
           ls -lh "dist/$OUT"
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: nanopi-linux-aarch64-musl
-          path: dist/nanopi-linux-aarch64-musl
+      - name: upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -eux
+          TAG="v0.10.0-aarch64"
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "${{ github.repository }}" --title "$TAG" --generate-notes
+          fi
+          gh release upload "$TAG" dist/nanopi-linux-aarch64-musl \
+            --repo "${{ github.repository }}" --clobber
+          gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q '.assets[].name'
