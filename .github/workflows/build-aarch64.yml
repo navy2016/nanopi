@@ -1,0 +1,44 @@
+name: build-aarch64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build linux-aarch64-musl
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-musl
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: aarch64-unknown-linux-musl
+
+      - name: install cross gcc
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: build release
+        env:
+          CC_aarch64_unknown_linux_musl: aarch64-linux-gnu-gcc
+          AR_aarch64_unknown_linux_musl: aarch64-linux-gnu-ar
+        run: cargo build --release --target aarch64-unknown-linux-musl
+
+      - name: stage asset
+        shell: bash
+        run: |
+          set -eux
+          SRC="target/aarch64-unknown-linux-musl/release/nanopi"
+          OUT="nanopi-linux-aarch64-musl"
+          mkdir -p dist
+          cp "$SRC" "dist/$OUT"
+          strip "dist/$OUT" || true
+          ls -lh "dist/$OUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nanopi-linux-aarch64-musl
+          path: dist/nanopi-linux-aarch64-musl
